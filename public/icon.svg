@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" fill="#121212"/>
+  <g fill="#bb86fc">
+    <!-- Heater icon -->
+    <rect x="156" y="156" width="200" height="200" rx="20" fill="none" stroke="#bb86fc" stroke-width="16"/>
+    <path d="M 196 216 L 316 216 M 196 256 L 316 256 M 196 296 L 316 296" stroke="#bb86fc" stroke-width="12" stroke-linecap="round"/>
+    <circle cx="256" cy="336" r="8" fill="#ff6b6b"/>
+  </g>
+  <text x="256" y="420" font-family="Arial, sans-serif" font-size="48" font-weight="bold" fill="#bb86fc" text-anchor="middle">H</text>
+</svg>
