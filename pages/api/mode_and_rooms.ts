@@ -12,8 +12,11 @@ export default async function handler(
   try {
     const data = await tikoService.getModeAndRooms();
     res.status(200).json(data);
-  } catch (error) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } catch (error: any) {
     console.error("Failed to get mode and rooms:", error);
-    res.status(500).json({ error: "Failed to fetch data from Tiko API" });
+    res
+      .status(500)
+      .json({ error: `Failed to fetch data from Tiko API: ${error?.message}` });
   }
 }

@@ -6,6 +6,7 @@ import {
   ApolloLink,
   DocumentNode,
 } from "@apollo/client";
+import { parse as parseSetCookie } from "set-cookie-parser";
 
 export enum Mode {
   Comfort = "comfort",
@@ -130,7 +131,7 @@ class TikoService {
   private propertyId: number | null = null;
   private isFetchingToken = false;
   private apolloClient: ApolloClient | null = null;
-  private cookies: string[] = [];
+  private cookies: Record<string, string> = {};
 
   private getApolloClient(): ApolloClient {
     if (!this.apolloClient) {
@@ -151,6 +152,7 @@ class TikoService {
   }
 
   private createApolloLink(): ApolloLink {
+    this.cookies = {}; // Clear cookies
     const httpLink = new HttpLink({
       uri: `${this.baseURL}/api/v3/graphql/`,
       credentials: "include",
@@ -164,24 +166,17 @@ class TikoService {
       fetch: (uri, options) => {
         return fetch(uri, options).then((response) => {
           // Capture cookies from response (server-side)
-          const setCookie = response.headers.get("set-cookie");
-          if (setCookie) {
-            // In Node.js, set-cookie can contain multiple cookies
-            const newCookies = setCookie.split(", ").map((cookie) => {
-              // Extract just the cookie name=value part before the first semicolon
-              return cookie.split(";")[0];
-            });
-            // Merge with existing cookies, replacing duplicates
-            newCookies.forEach((newCookie) => {
-              const cookieName = newCookie.split("=")[0];
-              // Remove old cookie with same name
-              this.cookies = this.cookies.filter(
-                (c) => !c.startsWith(cookieName + "=")
-              );
-              // Add new cookie
-              this.cookies.push(newCookie);
-            });
-          }
+          const setCookie = response.headers.get("set-cookie") || "";
+          // set-cookie-parser has issues handling single lines with multiple cookies
+          const setCookieNormalized = setCookie
+            .replace(/([sS]ecure),/g, "$1\n")
+            .split("\n")
+            .map((s) => s.trim());
+          const parsedCookies = parseSetCookie(setCookieNormalized);
+          const newCookies = Object.fromEntries(
+            parsedCookies.map(({ name, value }) => [name, value])
+          );
+          this.cookies = { ...this.cookies, ...newCookies };
           return response;
         });
       },
@@ -193,14 +188,17 @@ class TikoService {
           ...headers,
         };
 
-        // Add authorization token if available
+        // Add authorization token
         if (this.token) {
           newHeaders.authorization = `Token ${this.token}`;
         }
 
-        // Add cookies if available (server-side)
-        if (this.cookies.length > 0) {
-          newHeaders.cookie = this.cookies.join("; ");
+        // Add cookies
+        const cookie = Object.entries(this.cookies)
+          .map(([key, value]) => `${key}=${value}`)
+          .join("; ");
+        if (cookie !== "") {
+          newHeaders.cookie = cookie;
         }
 
         return {
@@ -242,7 +240,7 @@ class TikoService {
 
   public async auth(reAuth?: boolean) {
     // Token is already defined
-    if (!reAuth && this.token) {
+    if (!reAuth && this.token && this.propertyId) {
       return this.token;
     }
 
@@ -269,7 +267,6 @@ class TikoService {
     // Clear token, property ID, cookies, and Apollo client
     this.token = null;
     this.propertyId = null;
-    this.cookies = [];
     this.apolloClient = null; // Force recreation with new cookies
 
     // Fetching Tiko token
@@ -356,165 +353,49 @@ class TikoService {
     } catch (error: any) {
       const status =
         error && error.errors && error.errors[0] && error.errors[0].status;
-      console.error("callApi", actionName, status, error && error.errors);
-      if (status === "PERMISSION_DENIED") {
+      const httpStatusCode =
+        error.response?.status ||
+        (status === "PERMISSION_DENIED" && 403) ||
+        undefined;
+      // Try to reconnect if session has expired
+      if (status === "PERMISSION_DENIED" || httpStatusCode === 502) {
         return await tryAuthedRequest(true);
       }
+      console.error(
+        "callApi",
+        actionName,
+        httpStatusCode,
+        status || error.response?.statusText
+      );
       throw error;
     }
   }
 
   async getModeAndRooms(): Promise<ModeAndRooms> {
-    try {
-      const propertyId = await this.getPropertyId();
+    const propertyId = await this.getPropertyId();
 
-      const query = gql`
-        query GET_PROPERTY_MODE_AND_ROOMS($id: Int!, $excludeRooms: [Int]) {
-          property(id: $id) {
+    const query = gql`
+      query GET_PROPERTY_MODE_AND_ROOMS($id: Int!, $excludeRooms: [Int]) {
+        property(id: $id) {
+          id
+          mode
+          mboxDisconnected
+          rooms(excludeRooms: $excludeRooms) {
             id
-            mode
-            mboxDisconnected
-            rooms(excludeRooms: $excludeRooms) {
-              id
-              name
-              type
-              color
-              heaters
-              hasTemperatureSchedule
-              currentTemperatureDegrees
-              targetTemperatureDegrees
-              humidity
-              sensors
-              mode {
-                comfort
-                boost
-                sleep
-                absence
-                frost
-                disableHeating
-                passive
-                summer
-                bypass
-              }
-              modesTemperatures {
-                sleep
-                absence
-                comfort
-                frost
-              }
-              devices {
-                name
-              }
-              ...Status
-            }
-          }
-        }
-        fragment Status on RoomType {
-          status {
-            disconnected
-            heaterDisconnected
-            heatingOperating
-            sensorBatteryLow
-            sensorDisconnected
-            temporaryAdjustment
-          }
-        }
-      `;
-
-      const data = (await this.callApi("query", query, {
-        id: propertyId,
-      })) as TikoPropertyModeAndRoomsResponse;
-
-      const rooms = data?.property?.rooms || [];
-
-      const getMode = (modeObj: Modes): Mode | null =>
-        modeObj
-          ? (Object.entries(modeObj).find(
-              ([key, enabled]) => key !== "__typename" && enabled
-            )?.[0] as Mode)
-          : null;
-
-      return {
-        mode: getMode(data?.property?.mode),
-        rooms: rooms.map((room) => ({
-          id: room.id.toString(),
-          name: room?.devices?.[0]?.name || room.name, // Prefer device name since it can be customized
-          color: room.color || "#bb86fc",
-          currentTemperatureDegrees: room.currentTemperatureDegrees || 0,
-          targetTemperatureDegrees: room.targetTemperatureDegrees || 0,
-          mode: getMode(room.mode),
-          humidity: room.humidity || 0,
-        })),
-      };
-    } catch (error) {
-      console.error("Failed to get heaters:", error);
-      return { mode: null, rooms: [] };
-    }
-  }
-
-  async setMode(mode: Mode | null): Promise<boolean> {
-    try {
-      const propertyId = await this.getPropertyId();
-      const mutation = gql`
-        mutation ACTIVATE_HOUSE_MODE(
-          $propertyId: Int!
-          $mode: String!
-          $endDatetime: DateTime
-        ) {
-          activateHouseMode(
-            input: {
-              propertyId: $propertyId
-              mode: $mode
-              endDatetime: $endDatetime
-            }
-          ) {
+            name
+            type
+            color
+            heaters
+            hasTemperatureSchedule
+            currentTemperatureDegrees
+            targetTemperatureDegrees
+            humidity
+            sensors
             mode {
               comfort
-              absence
-              frost
-              disableHeating
-              passive
-              bypass
-            }
-          }
-        }
-      `;
-
-      await this.callApi("mutate", mutation, {
-        propertyId,
-        mode: mode || "false",
-      });
-      return true;
-    } catch (error) {
-      console.error("Failed to set global mode:", error);
-      return false;
-    }
-  }
-
-  async setRoomMode(roomId: number, mode: Mode | null): Promise<boolean> {
-    try {
-      const propertyId = await this.getPropertyId();
-      const mutation = gql`
-        mutation ACTIVATE_ROOM_MODE(
-          $propertyId: Int!
-          $roomId: Int!
-          $mode: String
-          $endDatetime: DateTime
-        ) {
-          activateRoomMode(
-            input: {
-              propertyId: $propertyId
-              roomId: $roomId
-              mode: $mode
-              endDatetime: $endDatetime
-            }
-          ) {
-            id
-            mode {
-              comfort
-              absence
-              sleep
               boost
+              sleep
+              absence
               frost
               disableHeating
               passive
@@ -527,59 +408,159 @@ class TikoService {
               comfort
               frost
             }
+            devices {
+              name
+            }
+            ...Status
           }
         }
-      `;
-      await this.callApi("mutate", mutation, {
-        propertyId,
-        roomId,
-        ...(mode ? { mode } : {}),
-      });
-      return true;
-    } catch (error) {
-      console.error("Failed to set room mode:", error);
-      return false;
-    }
+      }
+      fragment Status on RoomType {
+        status {
+          disconnected
+          heaterDisconnected
+          heatingOperating
+          sensorBatteryLow
+          sensorDisconnected
+          temporaryAdjustment
+        }
+      }
+    `;
+
+    const data = (await this.callApi("query", query, {
+      id: propertyId,
+    })) as TikoPropertyModeAndRoomsResponse;
+
+    const rooms = data?.property?.rooms || [];
+
+    const getMode = (modeObj: Modes): Mode | null =>
+      modeObj
+        ? (Object.entries(modeObj).find(
+            ([key, enabled]) => key !== "__typename" && enabled
+          )?.[0] as Mode)
+        : null;
+
+    return {
+      mode: getMode(data?.property?.mode),
+      rooms: rooms.map((room) => ({
+        id: room.id.toString(),
+        name: room?.devices?.[0]?.name || room.name, // Prefer device name since it can be customized
+        color: room.color || "#bb86fc",
+        currentTemperatureDegrees: room.currentTemperatureDegrees || 0,
+        targetTemperatureDegrees: room.targetTemperatureDegrees || 0,
+        mode: getMode(room.mode),
+        humidity: room.humidity || 0,
+      })),
+    };
   }
 
-  async setRoomTemperature(
-    roomId: number,
-    temperature: number
-  ): Promise<boolean> {
-    try {
-      const propertyId = await this.getPropertyId();
-      const mutation = gql`
-        mutation SET_PROPERTY_ROOM_ADJUST_TEMPERATURE(
-          $propertyId: Int!
-          $roomId: Int!
-          $temperature: Float!
+  async setMode(mode: Mode | null): Promise<void> {
+    const propertyId = await this.getPropertyId();
+    const mutation = gql`
+      mutation ACTIVATE_HOUSE_MODE(
+        $propertyId: Int!
+        $mode: String!
+        $endDatetime: DateTime
+      ) {
+        activateHouseMode(
+          input: {
+            propertyId: $propertyId
+            mode: $mode
+            endDatetime: $endDatetime
+          }
         ) {
-          setRoomAdjustTemperature(
-            input: {
-              propertyId: $propertyId
-              roomId: $roomId
-              temperature: $temperature
-            }
-          ) {
-            id
-            adjustTemperature {
-              active
-              endDateTime
-              temperature
-            }
+          mode {
+            comfort
+            absence
+            frost
+            disableHeating
+            passive
+            bypass
           }
         }
-      `;
-      await this.callApi("mutate", mutation, {
-        propertyId,
-        roomId,
-        temperature,
-      });
-      return true;
-    } catch (error) {
-      console.error("Failed to set room temperature:", error);
-      return false;
-    }
+      }
+    `;
+
+    await this.callApi("mutate", mutation, {
+      propertyId,
+      mode: mode || "false",
+    });
+  }
+
+  async setRoomMode(roomId: number, mode: Mode | null): Promise<void> {
+    const propertyId = await this.getPropertyId();
+    const mutation = gql`
+      mutation ACTIVATE_ROOM_MODE(
+        $propertyId: Int!
+        $roomId: Int!
+        $mode: String
+        $endDatetime: DateTime
+      ) {
+        activateRoomMode(
+          input: {
+            propertyId: $propertyId
+            roomId: $roomId
+            mode: $mode
+            endDatetime: $endDatetime
+          }
+        ) {
+          id
+          mode {
+            comfort
+            absence
+            sleep
+            boost
+            frost
+            disableHeating
+            passive
+            summer
+            bypass
+          }
+          modesTemperatures {
+            sleep
+            absence
+            comfort
+            frost
+          }
+        }
+      }
+    `;
+    await this.callApi("mutate", mutation, {
+      propertyId,
+      roomId,
+      ...(mode ? { mode } : {}),
+    });
+  }
+
+  async setRoomTemperature(roomId: number, temperature: number): Promise<void> {
+    const propertyId = await this.getPropertyId();
+    const mutation = gql`
+      mutation SET_PROPERTY_ROOM_ADJUST_TEMPERATURE(
+        $propertyId: Int!
+        $roomId: Int!
+        $temperature: Float!
+      ) {
+        setRoomAdjustTemperature(
+          input: {
+            propertyId: $propertyId
+            roomId: $roomId
+            temperature: $temperature
+          }
+        ) {
+          id
+          adjustTemperature {
+            active
+            endDateTime
+            temperature
+          }
+        }
+      }
+    `;
+    await this.callApi("mutate", mutation, {
+      propertyId,
+      roomId,
+      temperature,
+    });
   }
 }
 

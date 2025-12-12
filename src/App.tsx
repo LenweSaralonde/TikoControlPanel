@@ -36,16 +36,17 @@ export const App: React.FC = () => {
     try {
       setError(null);
       const response = await fetch("/api/mode_and_rooms");
-      if (!response.ok) {
-        throw new Error("Failed to fetch data");
-      }
       const data = await response.json();
+      if (!response.ok) {
+        throw (data && data.error) || "Failed to fetch data";
+      }
       setHeaters(data.rooms);
       setMainMode(data.mode);
       setIsLoading(false);
-    } catch (err) {
-      console.error("Failed to load heaters:", err);
-      setError("Failed to load heater data");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (err: any) {
+      console.error(err);
+      setError(err || "Failed to load data");
       setIsLoading(false);
     }
   };
@@ -58,7 +59,6 @@ export const App: React.FC = () => {
         body: JSON.stringify({ mode }),
       });
       if (response.ok) {
-        // setMainMode(mode);
         loadHeaters();
       }
     } catch (err) {
@@ -74,9 +74,6 @@ export const App: React.FC = () => {
         body: JSON.stringify({ room_id: +roomId, mode }),
       });
       if (response.ok) {
-        // setHeaters((prev) =>
-        //   prev.map((h) => (h.id === roomId ? { ...h, mode } : h))
-        // );
         loadHeaters();
       }
     } catch (err) {
@@ -95,13 +92,6 @@ export const App: React.FC = () => {
         body: JSON.stringify({ room_id: +roomId, temperature }),
       });
       if (response.ok) {
-        // setHeaters((prev) =>
-        //   prev.map((h) =>
-        //     h.id === roomId
-        //       ? { ...h, targetTemperatureDegrees: temperature }
-        //       : h
-        //   )
-        // );
         loadHeaters();
       }
     } catch (err) {

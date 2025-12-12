@@ -31,8 +31,11 @@ export default async function handler(
 
     await tikoService.setRoomTemperature(room_id, temperature);
     res.status(200).json({ success: true });
-  } catch (error) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } catch (error: any) {
     console.error("Failed to set temperature:", error);
-    res.status(500).json({ error: "Failed to set temperature" });
+    res
+      .status(500)
+      .json({ error: `Failed to set temperature: ${error?.message}` });
   }
 }
