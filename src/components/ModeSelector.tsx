@@ -4,7 +4,6 @@ import { Mode } from "services/tiko.service";
 interface ModeSelectorProps {
   currentMode: Mode | null;
   onModeChange: (mode: Mode | null) => void;
-  isHorizontal?: boolean;
 }
 
 const MODES: Array<{ key: Mode; label: string; icon: string }> = [
@@ -19,7 +18,6 @@ const MODES: Array<{ key: Mode; label: string; icon: string }> = [
 export const ModeSelector: React.FC<ModeSelectorProps> = ({
   currentMode,
   onModeChange,
-  isHorizontal = false,
 }) => {
   const [displayMode, setDisplayMode] = useState(currentMode);
 
@@ -34,11 +32,7 @@ export const ModeSelector: React.FC<ModeSelectorProps> = ({
   };
 
   return (
-    <div
-      className={`mode-selector-main ${
-        isHorizontal ? "horizontal" : "vertical"
-      }`}
-    >
+    <div className="mode-selector-main">
       {MODES.map((mode) => (
         <button
           key={mode.key}
@@ -48,7 +42,6 @@ export const ModeSelector: React.FC<ModeSelectorProps> = ({
           onClick={() => handleModeClick(mode.key)}
         >
           <span className="mode-icon">{mode.icon}</span>
-          {/* <span className="mode-label">{mode.label}</span> */}
         </button>
       ))}
     </div>

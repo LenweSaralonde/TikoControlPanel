@@ -6,28 +6,17 @@ import { Room, Mode } from "services/tiko.service";
 export const App: React.FC = () => {
   const [heaters, setHeaters] = useState<Room[]>([]);
   const [mainMode, setMainMode] = useState<Mode | null>(null);
-  const [isHorizontal, setIsHorizontal] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadHeaters();
 
-    const handleOrientationChange = () => {
-      setIsHorizontal(window.innerWidth > window.innerHeight);
-    };
-
-    handleOrientationChange();
-    window.addEventListener("resize", handleOrientationChange);
-    window.addEventListener("orientationchange", handleOrientationChange);
-
     const interval = setInterval(() => {
       loadHeaters();
     }, 30000);
 
     return () => {
-      window.removeEventListener("resize", handleOrientationChange);
-      window.removeEventListener("orientationchange", handleOrientationChange);
       clearInterval(interval);
     };
   }, []);
@@ -119,7 +108,7 @@ export const App: React.FC = () => {
   }
 
   return (
-    <div className={`app ${isHorizontal ? "horizontal" : "vertical"}`}>
+    <div className="app">
       <div className="room-tiles-container">
         {heaters.map((heater) => (
           <RoomTile
@@ -136,7 +125,6 @@ export const App: React.FC = () => {
         <ModeSelector
           currentMode={mainMode}
           onModeChange={handleMainModeChange}
-          isHorizontal={isHorizontal}
         />
       </div>
     </div>

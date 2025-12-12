@@ -4,16 +4,16 @@ A React-based heater control application for Tiko smart heating system, optimize
 
 ## Features
 
-- **Responsive Layout**: Adapts to vertical and horizontal orientations
 - **Dark Mode**: Full dark theme optimized for OLED displays
 - **Room Control**: Individual temperature and mode control for each room
-- **Global Settings**: Main temperature and mode controls
+- **Global Settings**: Mode controls
 - **Real-time Updates**: Auto-refresh every 30 seconds
 - **iOS 12.5.7 Compatible**: Transpiled to ES5 for maximum compatibility
 
 ## Setup
 
 1. **Install dependencies**:
+
    ```bash
    npm install
    ```
@@ -31,6 +31,7 @@ A React-based heater control application for Tiko smart heating system, optimize
 ## Development
 
 Start the development server with hot reload:
+
 ```bash
 npm run dev
 ```
@@ -38,6 +39,7 @@ npm run dev
 The app will be available at `http://localhost:3000`
 
 **Features in development mode:**
+
 - 🔥 Hot module replacement (changes update automatically)
 - 🔌 Automatic proxy to Tiko API (no CORS issues)
 - 📦 Webpack dev middleware integrated with Express
@@ -47,11 +49,13 @@ The app will be available at `http://localhost:3000`
 ### Build and Run
 
 Build and start the production server:
+
 ```bash
 npm run start:build
 ```
 
 Or separately:
+
 ```bash
 npm run build
 npm start
@@ -60,6 +64,7 @@ npm start
 The app will be available at `http://localhost:3000` (or your configured PORT)
 
 **Note:** Both development and production use the same Express server (`server.js`), which handles:
+
 - Serving the React app
 - Proxying `/api/*` requests to Tiko API
 - No need for separate webpack-dev-server!
@@ -67,6 +72,7 @@ The app will be available at `http://localhost:3000` (or your configured PORT)
 ### Deployment
 
 To deploy to a production environment:
+
 1. Set environment variable: `NODE_ENV=production`
 2. Run: `npm run start:build`
 3. Or deploy to any Node.js hosting platform (Heroku, Railway, Render, etc.)
@@ -95,11 +101,13 @@ src/
 ## Layout Modes
 
 ### Vertical (Portrait)
+
 - Room tiles: 2 columns, 70% height
 - Main temperature: 15% height
 - Mode buttons: 15% height, single row
 
 ### Horizontal (Landscape)
+
 - Room tiles: 2 rows, 70% width
 - Controls column: 30% width with temperature on top, modes on bottom
 
@@ -124,5 +132,6 @@ Both room and global temperatures can be adjusted between -19°C and +19°C.
 ## Fullscreen Mode
 
 For iOS Safari:
+
 1. Add to Home Screen
 2. Open from Home Screen for fullscreen experience
