@@ -40,6 +40,7 @@ export interface Room {
   targetTemperatureDegrees: number;
   mode: Mode | null;
   humidity: number;
+  isHeating: boolean;
 }
 
 export interface ModeAndRooms {
@@ -450,6 +451,7 @@ class TikoService {
         targetTemperatureDegrees: room.targetTemperatureDegrees || 0,
         mode: getMode(room.mode),
         humidity: room.humidity || 0,
+        isHeating: room.status.heatingOperating,
       })),
     };
   }

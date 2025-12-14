@@ -85,6 +85,7 @@ export const RoomTile: React.FC<RoomTileProps> = ({
     <div className="room-tile" style={{ borderColor: room.color }}>
       <div className="room-header">
         <h3 className="room-name">{room.name}</h3>
+        {room.isHeating && <span className="heating-icon">🔥</span>}
       </div>
 
       <div className="room-temps">

@@ -93,16 +93,25 @@ body {
 }
 
 .room-header {
+  padding: 0 2px;
+  display: flex;
+  flex-direction: row;
   margin-bottom: 6px;
 }
 
 .room-name {
-  font-size: 13px;
+  flex: 1;
+  font-size: 18px;
   font-weight: 600;
   color: #bb86fc;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.heating-icon {
+  font-size: 18px;
+  line-height: 18px;
 }
 
 .room-temps {
