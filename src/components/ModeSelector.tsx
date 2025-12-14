@@ -20,15 +20,18 @@ export const ModeSelector: React.FC<ModeSelectorProps> = ({
   onModeChange,
 }) => {
   const [displayMode, setDisplayMode] = useState(currentMode);
+  const [isSettingMode, setIsSettingMode] = useState(false);
 
   useEffect(() => {
     setDisplayMode(currentMode);
   }, [currentMode]);
 
-  const handleModeClick = (mode: Mode) => {
+  const handleModeClick = async (mode: Mode) => {
+    setIsSettingMode(true);
     const newMode = mode === displayMode ? null : mode;
     setDisplayMode(newMode);
-    onModeChange(newMode);
+    await onModeChange(newMode);
+    setIsSettingMode(false);
   };
 
   return (
@@ -36,6 +39,7 @@ export const ModeSelector: React.FC<ModeSelectorProps> = ({
       {MODES.map((mode) => (
         <button
           key={mode.key}
+          disabled={isSettingMode}
           className={`mode-main-btn ${
             displayMode === mode.key ? "active" : ""
           }`}

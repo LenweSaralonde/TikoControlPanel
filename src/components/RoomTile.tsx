@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { Room, Mode } from "services/tiko.service";
+import { useDebounce } from "src/hooks/useDebounce";
 
 const TEMP_MIN = 0;
 const TEMP_MAX = 40;
@@ -8,7 +9,7 @@ const DEBOUNCE_DELAY = 1000; // ms
 
 interface RoomTileProps {
   heater: Room;
-  mainMode: Mode | null;
+  isSettingMainMode: boolean;
   onModeChange: (roomId: string, mode: Mode | null) => void;
   onTemperatureChange: (roomId: string, temperature: number) => Promise<void>;
 }
@@ -24,7 +25,7 @@ const MODES: Array<{ key: Mode; label: string }> = [
 
 export const RoomTile: React.FC<RoomTileProps> = ({
   heater,
-  mainMode,
+  isSettingMainMode,
   onModeChange,
   onTemperatureChange,
 }) => {
@@ -34,7 +35,7 @@ export const RoomTile: React.FC<RoomTileProps> = ({
   );
   const [displayMode, setDisplayMode] = useState(heater.mode);
   const [isSettingTemp, setIsSettingTemp] = useState(false);
-  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [isSettingMode, setIsSettingMode] = useState(false);
   const isDisabled = heater.mode === Mode.DisableHeating;
 
   useEffect(() => {
@@ -45,21 +46,21 @@ export const RoomTile: React.FC<RoomTileProps> = ({
   }, [heater.targetTemperatureDegrees]);
 
   useEffect(() => {
-    setDisplayMode(heater.mode);
+    if (!isSettingMode) {
+      setDisplayMode(heater.mode);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [heater.mode]);
+
+  const debouncedTempChange = useDebounce(async (newTemp: number) => {
+    setIsSettingTemp(true);
+    await onTemperatureChange(heater.id, newTemp);
+    setIsSettingTemp(false);
+  }, DEBOUNCE_DELAY);
 
   const handleTempChange = (newTemp: number) => {
     setDisplayTemp(newTemp);
-
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-    }
-
-    debounceTimerRef.current = setTimeout(async () => {
-      setIsSettingTemp(true);
-      await onTemperatureChange(heater.id, newTemp);
-      setIsSettingTemp(false);
-    }, DEBOUNCE_DELAY);
+    debouncedTempChange(newTemp);
   };
 
   const handleTempIncrease = () => {
@@ -74,10 +75,12 @@ export const RoomTile: React.FC<RoomTileProps> = ({
     }
   };
 
-  const handleModeClick = (mode: Mode) => {
+  const handleModeClick = async (mode: Mode) => {
+    setIsSettingMode(true);
     const newMode = mode === displayMode ? null : mode;
     setDisplayMode(newMode);
-    onModeChange(heater.id, newMode);
+    await onModeChange(heater.id, newMode);
+    setIsSettingMode(false);
   };
 
   return (
@@ -103,7 +106,13 @@ export const RoomTile: React.FC<RoomTileProps> = ({
         <button
           className="temp-btn"
           onClick={handleTempDecrease}
-          disabled={isDisabled || displayTemp <= TEMP_MIN}
+          disabled={
+            isSettingTemp ||
+            isSettingMode ||
+            isSettingMainMode ||
+            isDisabled ||
+            displayTemp <= TEMP_MIN
+          }
         >
           -
         </button>
@@ -113,7 +122,13 @@ export const RoomTile: React.FC<RoomTileProps> = ({
         <button
           className="temp-btn"
           onClick={handleTempIncrease}
-          disabled={isDisabled || displayTemp >= TEMP_MAX}
+          disabled={
+            isSettingTemp ||
+            isSettingMode ||
+            isSettingMainMode ||
+            isDisabled ||
+            displayTemp >= TEMP_MAX
+          }
         >
           +
         </button>
@@ -123,9 +138,8 @@ export const RoomTile: React.FC<RoomTileProps> = ({
         {MODES.map((mode) => (
           <button
             key={mode.key}
-            className={`mode-btn ${
-              displayMode === mode.key && mainMode !== mode.key ? "active" : ""
-            }`}
+            disabled={isSettingTemp || isSettingMode || isSettingMainMode}
+            className={`mode-btn ${displayMode === mode.key ? "active" : ""}`}
             onClick={() => handleModeClick(mode.key)}
           >
             {mode.label}

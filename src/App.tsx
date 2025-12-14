@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { RoomTile } from "components/RoomTile";
 import { ModeSelector } from "components/ModeSelector";
 import { Room, Mode } from "services/tiko.service";
@@ -6,53 +6,110 @@ import { Room, Mode } from "services/tiko.service";
 export const App: React.FC = () => {
   const [heaters, setHeaters] = useState<Room[]>([]);
   const [mainMode, setMainMode] = useState<Mode | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isAppLoading, setIsAppLoading] = useState<boolean>(true);
+  const isModeAndRoomsLoading = useRef<boolean>(false);
+  const [isSettingMainMode, setIsSettingMainMode] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadHeaters();
+  const loadModeAndRooms = async (forceReload = false) => {
+    if (isModeAndRoomsLoading.current && !forceReload) {
+      return;
+    }
 
-    const interval = setInterval(() => {
-      loadHeaters();
-    }, 30000);
-
-    return () => {
-      clearInterval(interval);
-    };
-  }, []);
-
-  const loadHeaters = async () => {
     try {
+      isModeAndRoomsLoading.current = true;
       setError(null);
       const response = await fetch("/api/mode_and_rooms");
       const data = await response.json();
       if (!response.ok) {
         throw (data && data.error) || "Failed to fetch data";
       }
-      setHeaters(data.rooms);
-      setMainMode(data.mode);
-      setIsLoading(false);
+      if (data.rooms !== undefined) {
+        setHeaters(data.rooms);
+      }
+      if (data.mode !== undefined) {
+        setMainMode(data.mode);
+      }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       console.error(err);
       setError(err || "Failed to load data");
-      setIsLoading(false);
     }
+
+    setIsAppLoading(false);
+    isModeAndRoomsLoading.current = false;
   };
+
+  useEffect(() => {
+    loadModeAndRooms();
+
+    let interval: NodeJS.Timeout | null = null;
+
+    const startPolling = () => {
+      if (interval) return; // Already polling
+      interval = setInterval(() => {
+        loadModeAndRooms();
+      }, 30000);
+    };
+
+    const stopPolling = () => {
+      if (interval) {
+        clearInterval(interval);
+        interval = null;
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        stopPolling();
+      } else {
+        loadModeAndRooms();
+        startPolling();
+      }
+    };
+
+    const handleFocus = () => {
+      loadModeAndRooms();
+      startPolling();
+    };
+
+    const handleBlur = () => {
+      stopPolling();
+    };
+
+    // Start initial polling
+    startPolling();
+
+    // Listen for visibility changes (sleep mode, tab switching)
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    // Listen for window focus/blur events
+    window.addEventListener("focus", handleFocus);
+    window.addEventListener("blur", handleBlur);
+
+    return () => {
+      stopPolling();
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("focus", handleFocus);
+      window.removeEventListener("blur", handleBlur);
+    };
+  }, []);
 
   const handleMainModeChange = async (mode: Mode | null) => {
     try {
+      setIsSettingMainMode(true);
       const response = await fetch("/api/mode", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mode }),
       });
       if (response.ok) {
-        loadHeaters();
+        await loadModeAndRooms(true);
       }
     } catch (err) {
       console.error("Failed to set main mode:", err);
     }
+    setIsSettingMainMode(false);
   };
 
   const handleRoomModeChange = async (roomId: string, mode: Mode | null) => {
@@ -63,7 +120,7 @@ export const App: React.FC = () => {
         body: JSON.stringify({ room_id: +roomId, mode }),
       });
       if (response.ok) {
-        loadHeaters();
+        await loadModeAndRooms(true);
       }
     } catch (err) {
       console.error("Failed to set room mode:", err);
@@ -81,14 +138,14 @@ export const App: React.FC = () => {
         body: JSON.stringify({ room_id: +roomId, temperature }),
       });
       if (response.ok) {
-        loadHeaters();
+        await loadModeAndRooms(true);
       }
     } catch (err) {
       console.error("Failed to set room temperature:", err);
     }
   };
 
-  if (isLoading) {
+  if (isAppLoading) {
     return (
       <div className="app loading">
         <div className="loading-spinner">Loading...</div>
@@ -101,7 +158,7 @@ export const App: React.FC = () => {
       <div className="app error">
         <div className="error-message">
           <p>{error}</p>
-          <button onClick={loadHeaters}>Retry</button>
+          <button onClick={() => loadModeAndRooms(true)}>Retry</button>
         </div>
       </div>
     );
@@ -114,7 +171,7 @@ export const App: React.FC = () => {
           <RoomTile
             key={heater.id}
             heater={heater}
-            mainMode={mainMode}
+            isSettingMainMode={isSettingMainMode}
             onModeChange={handleRoomModeChange}
             onTemperatureChange={handleRoomTemperatureChange}
           />

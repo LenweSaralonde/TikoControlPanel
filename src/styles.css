@@ -213,6 +213,11 @@ body {
   transform: scale(0.95);
 }
 
+.mode-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
 .controls-container {
   display: flex;
   flex: 0 0 15%;
@@ -280,6 +285,11 @@ body {
 
 .mode-main-btn:active {
   transform: scale(0.95);
+}
+
+.mode-main-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
 }
 
 .mode-icon {
