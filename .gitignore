@@ -3,6 +3,5 @@ dist
 .DS_Store
 *.log
 .env
-.vscode/
 .next
 next-env.d.ts

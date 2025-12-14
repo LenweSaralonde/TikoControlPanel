@@ -29,6 +29,12 @@
       "config/*": [
         "src/config/*"
       ],
+      "hooks/*": [
+        "src/hooks/*"
+      ],
+      "utils/*": [
+        "src/utils/*"
+      ],
       "src/*": [
         "src/*"
       ]

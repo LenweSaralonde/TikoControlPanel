@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Room, Mode } from "services/tiko.service";
-import { useDebounce } from "src/hooks/useDebounce";
+import { useDebounce } from "hooks/useDebounce";
 
 const TEMP_MIN = 0;
 const TEMP_MAX = 40;
