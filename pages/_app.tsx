@@ -1,8 +1,15 @@
 import type { AppProps } from "next/app";
 import Head from "next/head";
+import { useEffect } from "react";
+import { ErrorBoundary } from "src/components/ErrorBoundary";
+import { setupGlobalErrorHandlers } from "src/utils/errorHandling";
 import "src/styles.css";
 
 export default function MyApp({ Component, pageProps }: AppProps) {
+  useEffect(() => {
+    setupGlobalErrorHandlers();
+  }, []);
+
   return (
     <>
       <Head>
@@ -14,7 +21,9 @@ export default function MyApp({ Component, pageProps }: AppProps) {
           content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, minimal-ui"
         />
       </Head>
-      <Component {...pageProps} />
+      <ErrorBoundary>
+        <Component {...pageProps} />
+      </ErrorBoundary>
     </>
   );
 }
