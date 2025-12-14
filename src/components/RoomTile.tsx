@@ -1,6 +1,14 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, ReactNode } from "react";
 import { Room, Mode } from "services/tiko.service";
 import { useDebounce } from "hooks/useDebounce";
+import ThermometerIcon from "icons/Thermometer";
+import DropletIcon from "icons/Droplet";
+import HeaterIcon from "icons/Heater";
+import SunIcon from "icons/Sun";
+import LeafIcon from "icons/Leaf";
+import MoonIcon from "icons/Moon";
+import SnowflakeIcon from "icons/Snowflake";
+import PowerIcon from "icons/Power";
 
 const TEMP_MIN = 0;
 const TEMP_MAX = 40;
@@ -14,13 +22,12 @@ interface RoomTileProps {
   onTemperatureChange: (roomId: string, temperature: number) => Promise<void>;
 }
 
-const MODES: Array<{ key: Mode; label: string }> = [
-  { key: Mode.Comfort, label: "☀️" },
-  { key: Mode.Absence, label: "🌱" },
-  { key: Mode.Sleep, label: "🌙" },
-  { key: Mode.Frost, label: "❄️" },
-  //   { key: Mode.Boost, label: "🔥" },
-  { key: Mode.DisableHeating, label: "🚫" },
+const MODES: Array<{ key: Mode; label: ReactNode }> = [
+  { key: Mode.Comfort, label: <SunIcon /> },
+  { key: Mode.Absence, label: <LeafIcon /> },
+  { key: Mode.Sleep, label: <MoonIcon /> },
+  { key: Mode.Frost, label: <SnowflakeIcon /> },
+  { key: Mode.DisableHeating, label: <PowerIcon /> },
 ];
 
 export const RoomTile: React.FC<RoomTileProps> = ({
@@ -82,21 +89,32 @@ export const RoomTile: React.FC<RoomTileProps> = ({
   };
 
   return (
-    <div className="room-tile" style={{ borderColor: room.color }}>
+    <div
+      className="room-tile"
+      style={{ borderColor: room.color, backgroundColor: room.color }}
+    >
       <div className="room-header">
         <h3 className="room-name">{room.name}</h3>
-        {room.isHeating && <span className="heating-icon">🔥</span>}
+        {room.isHeating && (
+          <span className="heating-icon">
+            <HeaterIcon />
+          </span>
+        )}
       </div>
 
       <div className="room-temps">
         <div className="temp-display">
-          <span className="temp-label">🌡️</span>
+          <span className="temp-label">
+            <ThermometerIcon />
+          </span>
           <span className="temp-value">
             {room.currentTemperatureDegrees.toFixed(1)}°
           </span>
         </div>
         <div className="temp-display">
-          <span className="temp-label">💧</span>
+          <span className="temp-label">
+            <DropletIcon />
+          </span>
           <span className="temp-value">{room.humidity.toFixed(0)}%</span>
         </div>
       </div>
@@ -113,7 +131,7 @@ export const RoomTile: React.FC<RoomTileProps> = ({
             displayTemp <= TEMP_MIN
           }
         >
-          -
+          −
         </button>
         <span className="temp-display-large">
           {isDisabled ? <>--</> : <>{displayTemp.toFixed(1)}°</>}
@@ -140,6 +158,13 @@ export const RoomTile: React.FC<RoomTileProps> = ({
             disabled={isSettingTemp || isSettingMode || isSettingMainMode}
             className={`mode-btn ${displayMode === mode.key ? "active" : ""}`}
             onClick={() => handleModeClick(mode.key)}
+            style={
+              displayMode === mode.key
+                ? {
+                    color: room.color,
+                  }
+                : {}
+            }
           >
             {mode.label}
           </button>
