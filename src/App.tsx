@@ -4,7 +4,7 @@ import { ModeSelector } from "components/ModeSelector";
 import { Room, Mode } from "services/tiko.service";
 
 export const App: React.FC = () => {
-  const [heaters, setHeaters] = useState<Room[]>([]);
+  const [rooms, setRooms] = useState<Room[]>([]);
   const [mainMode, setMainMode] = useState<Mode | null>(null);
   const [isAppLoading, setIsAppLoading] = useState<boolean>(true);
   const isModeAndRoomsLoading = useRef<boolean>(false);
@@ -25,7 +25,7 @@ export const App: React.FC = () => {
         throw (data && data.error) || "Failed to fetch data";
       }
       if (data.rooms !== undefined) {
-        setHeaters(data.rooms);
+        setRooms(data.rooms);
       }
       if (data.mode !== undefined) {
         setMainMode(data.mode);
@@ -167,10 +167,10 @@ export const App: React.FC = () => {
   return (
     <div className="app">
       <div className="room-tiles-container">
-        {heaters.map((heater) => (
+        {rooms.map((room) => (
           <RoomTile
-            key={heater.id}
-            heater={heater}
+            key={room.id}
+            room={room}
             isSettingMainMode={isSettingMainMode}
             onModeChange={handleRoomModeChange}
             onTemperatureChange={handleRoomTemperatureChange}

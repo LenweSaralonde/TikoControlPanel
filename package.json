@@ -1,7 +1,7 @@
 {
-  "name": "heaters-gonna-heat",
+  "name": "tiko-control-panel",
   "version": "1.0.0",
-  "description": "Tiko heater control app",
+  "description": "Tiko heating control app",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

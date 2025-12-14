@@ -8,7 +8,7 @@ const TEMP_INCREMENT = 0.5;
 const DEBOUNCE_DELAY = 1000; // ms
 
 interface RoomTileProps {
-  heater: Room;
+  room: Room;
   isSettingMainMode: boolean;
   onModeChange: (roomId: string, mode: Mode | null) => void;
   onTemperatureChange: (roomId: string, temperature: number) => Promise<void>;
@@ -24,37 +24,35 @@ const MODES: Array<{ key: Mode; label: string }> = [
 ];
 
 export const RoomTile: React.FC<RoomTileProps> = ({
-  heater,
+  room,
   isSettingMainMode,
   onModeChange,
   onTemperatureChange,
 }) => {
   // Local state for instant UI updates
-  const [displayTemp, setDisplayTemp] = useState(
-    heater.targetTemperatureDegrees
-  );
-  const [displayMode, setDisplayMode] = useState(heater.mode);
+  const [displayTemp, setDisplayTemp] = useState(room.targetTemperatureDegrees);
+  const [displayMode, setDisplayMode] = useState(room.mode);
   const [isSettingTemp, setIsSettingTemp] = useState(false);
   const [isSettingMode, setIsSettingMode] = useState(false);
-  const isDisabled = heater.mode === Mode.DisableHeating;
+  const isDisabled = room.mode === Mode.DisableHeating;
 
   useEffect(() => {
     if (!isSettingTemp) {
-      setDisplayTemp(heater.targetTemperatureDegrees);
+      setDisplayTemp(room.targetTemperatureDegrees);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [heater.targetTemperatureDegrees]);
+  }, [room.targetTemperatureDegrees]);
 
   useEffect(() => {
     if (!isSettingMode) {
-      setDisplayMode(heater.mode);
+      setDisplayMode(room.mode);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [heater.mode]);
+  }, [room.mode]);
 
   const debouncedTempChange = useDebounce(async (newTemp: number) => {
     setIsSettingTemp(true);
-    await onTemperatureChange(heater.id, newTemp);
+    await onTemperatureChange(room.id, newTemp);
     setIsSettingTemp(false);
   }, DEBOUNCE_DELAY);
 
@@ -79,26 +77,26 @@ export const RoomTile: React.FC<RoomTileProps> = ({
     setIsSettingMode(true);
     const newMode = mode === displayMode ? null : mode;
     setDisplayMode(newMode);
-    await onModeChange(heater.id, newMode);
+    await onModeChange(room.id, newMode);
     setIsSettingMode(false);
   };
 
   return (
-    <div className="room-tile" style={{ borderColor: heater.color }}>
+    <div className="room-tile" style={{ borderColor: room.color }}>
       <div className="room-header">
-        <h3 className="room-name">{heater.name}</h3>
+        <h3 className="room-name">{room.name}</h3>
       </div>
 
       <div className="room-temps">
         <div className="temp-display">
           <span className="temp-label">🌡️</span>
           <span className="temp-value">
-            {heater.currentTemperatureDegrees.toFixed(1)}°
+            {room.currentTemperatureDegrees.toFixed(1)}°
           </span>
         </div>
         <div className="temp-display">
           <span className="temp-label">💧</span>
-          <span className="temp-value">{heater.humidity.toFixed(0)}%</span>
+          <span className="temp-value">{room.humidity.toFixed(0)}%</span>
         </div>
       </div>
 
