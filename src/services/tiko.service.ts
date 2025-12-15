@@ -6,7 +6,7 @@ import {
   ApolloLink,
   DocumentNode,
 } from "@apollo/client";
-import { parse as parseSetCookie } from "set-cookie-parser";
+import { parse as parseSetCookie, splitCookiesString } from "set-cookie-parser";
 
 export enum Mode {
   Comfort = "comfort",
@@ -169,10 +169,7 @@ class TikoService {
           // Capture cookies from response (server-side)
           const setCookie = response.headers.get("set-cookie") || "";
           // set-cookie-parser has issues handling single lines with multiple cookies
-          const setCookieNormalized = setCookie
-            .replace(/([sS]ecure),/g, "$1\n")
-            .split("\n")
-            .map((s) => s.trim());
+          const setCookieNormalized = splitCookiesString(setCookie);
           const parsedCookies = parseSetCookie(setCookieNormalized);
           const newCookies = Object.fromEntries(
             parsedCookies.map(({ name, value }) => [name, value])
