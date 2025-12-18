@@ -131,7 +131,7 @@ export const RoomTile: React.FC<RoomTileProps> = ({
             displayTemp <= TEMP_MIN
           }
         >
-          −
+          <span>−</span>
         </button>
         <span className="temp-display-large">
           {isDisabled ? <>--</> : <>{displayTemp.toFixed(1)}°</>}
@@ -147,7 +147,7 @@ export const RoomTile: React.FC<RoomTileProps> = ({
             displayTemp >= TEMP_MAX
           }
         >
-          +
+          <span>+</span>
         </button>
       </div>
 
